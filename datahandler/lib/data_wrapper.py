@@ -110,7 +110,6 @@ class DividendData:
             daily = data.drop(['dividend'], axis=1).where(pd.notnull(data), None)
             daily['type'] = 'price'
 
-
             dividend = data[data['dividend'] != 0].drop(['adjClose', 'lastDivAnnual', 'divYield'], axis=1)
             dividend['type'] = 'dividend'
             self._log('Retrieved history for {0}'.format(ticker))
