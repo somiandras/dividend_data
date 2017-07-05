@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 import pandas as pd
 import io
+import logging
 
 class Downloader:
     def __init__(self):
@@ -68,7 +69,7 @@ class Downloader:
             self._cookie = None
 
             if self.attempt_counter < 10:
-                print('Auth error, retrying...')
+                logging.error('Yahoo auth error, retrying...')
                 return self._get_single_data_type(data_type=data_type)
             else:
                 raise Exception('Permanent Auth Error')

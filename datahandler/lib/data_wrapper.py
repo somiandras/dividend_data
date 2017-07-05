@@ -6,37 +6,20 @@ import numpy as np
 from datetime import datetime
 import pandas as pd
 from lib.yahoo_downloader import Downloader
-import os
 import math
+import logging
 
 
 class DividendData:
     '''Class for saving, retrieving and updating company data in aristocrats database'''
     def __init__(self):
-        os.remove('log.txt')
-        self._log('Setting up data wrapper')
+        logging.basicConfig(filename='datahandler.log', filemode='w', level=logging.ERROR, format='%(asctime)s\t%(levelname)s\t%(message)s')
+        logging.debug('Setting up data wrapper')
         self.db = MongoClient().dividend_investing
         self.downloader = Downloader()
         self.DRIP_URL = 'http://www.dripinvesting.org/tools/U.S.DividendChampions.xls'
         self.companies = self._get_companies()
-        self._log('Data wrapper setup done')
-
-    def _log(self, message, exception=False):
-        '''Log events to text file'''
-        if exception:
-            message = 'Error: ' + message
-        with open('log.txt', 'a') as file:
-            file.write('{0}\t{1}\r'.format(datetime.now(), message))
-
-    def print_log(self):
-        '''Print log to stdout'''
-        try:
-            with open('log.txt', 'r') as file:
-                for line in file:
-                    print(line)
-        except OSError as e:
-            self._log('{0}: {1}'.format(e.filename, e.strerror), exception=True)
-            self.print_log()
+        logging.info('Ready to crunch data!')
 
     def _define_category(self, years):
         if years > 24:
@@ -48,13 +31,13 @@ class DividendData:
 
     def download_drip_sheet(self):
         '''Get data sheet from DRIP investing'''
-        self._log('Trying to download DRIP datasheet...')
+        logging.debug('Trying to download DRIP datasheet...')
         try:
             companies = pd.read_excel(self.DRIP_URL, sheetname='All CCC')
         except Exception as e:
-            self._log('Cannot download DRIP datasheet: {0}'.format(e), exception=True)
+            logging.critical('Cannot download DRIP datasheet: {0}'.format(e))
         else:
-            self._log('DRIP data downloaded')
+            logging.info('DRIP data downloaded')
             companies.columns = companies.iloc[4]
             companies.reindex(companies)
             useful_columns = ['Name', 'Symbol', 'Industry', 'Yrs', '1-yr', '3-yr', '5-yr', '10-yr', 'EPS']
@@ -75,16 +58,16 @@ class DividendData:
             df['category'] = df['divRaiseYrs'].apply(self._define_category)
             df.drop(['divRaiseYrs'], axis=1, inplace=True)
             company_list = df.where(pd.notnull(df), None).to_dict(orient='records')
-            self._log('DRIP list is processed')
+            logging.debug('DRIP list is processed')
             return company_list
 
     def _download_company_history(self, ticker, interval=20):
         '''Get price and dividend history of a company from Yahoo and format/process it'''
-        self._log('Getting {1} year history for {0}'.format(ticker, interval))
+        logging.debug('Getting {1} year history for {0}'.format(ticker, interval))
         try:
             data = self.downloader.get_history(ticker=ticker, years=interval)
         except Exception as e:
-            self._log('Failed to download history for {0}: {1}'.format(ticker, e), exception=True)
+            logging.error('Failed to download history for {0}: {1}'.format(ticker, e))
             return []
         else:
             data['date'] = data.index
@@ -104,7 +87,7 @@ class DividendData:
             try:
                 data['divYield'] = data['lastDivAnnual'] / data['adjClose'] * 100
             except Exception as e:
-                self._log('When trying to calculate div yield for {0}: {1}'.format(ticker, e), exception=True)
+                logging.error('When trying to calculate div yield for {0}: {1}'.format(ticker, e))
                 data['divYield'] = np.nan
 
             daily = data.drop(['dividend'], axis=1).where(pd.notnull(data), None)
@@ -112,28 +95,28 @@ class DividendData:
 
             dividend = data[data['dividend'] != 0].drop(['adjClose', 'lastDivAnnual', 'divYield'], axis=1)
             dividend['type'] = 'dividend'
-            self._log('Retrieved history for {0}'.format(ticker))
+            logging.info('Retrieved history for {0}'.format(ticker))
             return daily.to_dict(orient='records') + dividend.to_dict(orient='records')
 
     def _get_companies(self):
         '''Download company list from database companies collection'''
-        self._log('Getting company list from database')
+        logging.debug('Getting company list from database')
         try:
             cursor = self.db.companies.find()
         except Exception as e:
-            self._log('Cannot retrieve company list: {0}'.format(e))
+            logging.error('Cannot retrieve company list: {0}'.format(e))
             return None
         else:
             return list(cursor)
 
     def _check_download_date(self):
         '''Get the last time the company list was updated'''
-        self._log('Checking last download date in company list')
+        logging.debug('Checking last download date in company list')
         if self.companies and len(self.companies) > 0:
             max_date = np.max([company['downloaded'] for company in self.companies])
             return max_date
         else:
-            self._log('No max date, company list is empty')
+            logging.debug('No max date, company list is empty')
             return None
 
     def get_tickers(self, category='all'):
@@ -142,32 +125,32 @@ class DividendData:
             tickers = [company['ticker'] for company in self.companies if company['category'] == category]
         else:
             tickers = [company['ticker'] for company in self.companies]
-        self._log('Returning ticker list for {0} category'.format(category))
+        logging.debug('Returning ticker list for {0} category'.format(category))
         return tickers
 
     def update_basic_company_data(self):
         '''Insert or update basic company data, returning list of tickers'''
-        self._log('Updating basic company data')
+        logging.debug('Updating basic company data')
         last_downloaded = self._check_download_date()
         if last_downloaded and datetime.today().month == last_downloaded.month:
-            self._log('Company list seems up-to-date, skipping download')
+            logging.info('Company list seems up-to-date, skipping download')
         else:
-            self._log('Company list is outdated, download needed')
+            logging.info('Company list is outdated, download needed')
             self.companies = self.download_drip_sheet()
-            self._log('Starting to upload company profiles')
+            logging.debug('Starting to upload company profiles')
             for company in self.companies:
                 try:
                     self.db.companies.update_one({'ticker': company['ticker']}, {'$set': company}, upsert=True)
                 except Exception as e:
-                    self._log('{0} when uploading {1} to company collection'.format(e, company['ticker']), exception=True)
+                    logging.error('{0} when uploading {1} to company collection'.format(e, company['ticker']))
                 else:
-                    self._log('{0} is uploaded to company collection'.format(company['ticker']))
-            self._log('Company list update finished')
+                    logging.info('{0} is uploaded to company collection'.format(company['ticker']))
+            logging.debug('Company list update finished')
         return self.get_tickers()
 
     def update_company_history(self, ticker):
         '''Save new entries in price and dividend history'''
-        self._log('Updating history for {0}'.format(ticker))
+        logging.debug('Updating history for {0}'.format(ticker))
         try:
             # Get the last existing date from database
             agg = self.db.history.aggregate([
@@ -192,10 +175,10 @@ class DividendData:
         dividend_data = [item for item in data if item['type'] == 'dividend' and item['date'] > max_date]
 
         if len(price_data) == 0 and len(dividend_data) == 0:
-            self._log('No new data for {0}, no updates added to database'.format(ticker))
+            logging.info('No new data for {0}, no updates added to database'.format(ticker))
             return True
         else:
-            self._log('{0} price data, {1} dividend data for {2}'.format(len(price_data), len(dividend_data), ticker))
+            logging.info('{0} price data, {1} dividend data for {2}'.format(len(price_data), len(dividend_data), ticker))
 
         # Insert document and placeholder fields if company is not in collection
         try:
@@ -212,10 +195,10 @@ class DividendData:
                 },
                 upsert=True)
         except Exception as e:
-            self._log('Cannot update {0} in history collection: {1}'.format(ticker, e), exception=True)
+            logging.error('Cannot update {0} in history collection: {1}'.format(ticker, e))
             return False
         else:
-            self._log('{0} history updated with {1} values'.format(ticker, len(price_data) + len(dividend_data)))
+            logging.info('{0} history updated with {1} values'.format(ticker, len(price_data) + len(dividend_data)))
             return True
 
 
@@ -231,10 +214,10 @@ class DividendData:
             ])
             last_item = list(agg)[0]['price']
         except Exception as e:
-            self._log('Cannot retrieve latest price data for {0}: {1}'.format(ticker, e), exception=True)
+            logging.error('Cannot retrieve latest price data for {0}: {1}'.format(ticker, e))
             return None
         else:
-            self._log('Last price data retrieved for {0}'.format(ticker))
+            logging.debug('Last price data retrieved for {0}'.format(ticker))
             return last_item
 
     def _calculate_payout_ratio(self, ticker, last_div):
@@ -244,7 +227,7 @@ class DividendData:
             payout = last_div / EPS * 100
         else:
             payout = None
-        self._log('Payout calculated for {0}'.format(ticker))
+        logging.debug('Payout calculated for {0}'.format(ticker))
         return payout
 
     def get_yield_distribution(self, ticker, interval=10):
@@ -252,7 +235,7 @@ class DividendData:
         try:
             history = self.db.history.find_one({'ticker': ticker}, projection={'_id': 0, 'price': 1})['price']
         except Exception as e:
-            self._log('Cannot retrieve price history for {0} for yield distribution: {1}'.format(ticker, e), exception=True)
+            logging.error('Cannot retrieve price history for {0} for yield distribution: {1}'.format(ticker, e))
             return None
         else:
             if len(history) > 0:
@@ -269,18 +252,18 @@ class DividendData:
                 }
                 return yield_dist
             else:
-                self._log('No history downloaded for {0}, cannot calculate yield distribution'.format(ticker))
+                logging.info('No history downloaded for {0}, cannot calculate yield distribution'.format(ticker))
                 return None
 
     def update_company_profile(self, ticker):
         '''Set additional fields and data on existing aristocrat'''
-        self._log('Updating {0} profile'.format(ticker))
+        logging.debug('Updating {0} profile'.format(ticker))
         try:
             data_used = self.db.companies.find_one({'ticker': ticker}, projection={'_id': 0, 'lastDataUsed': 1})
             latest_data = self._get_latest_data(ticker)
 
             if 'lastDataUsed' in data_used and data_used['lastDataUsed'] == latest_data['date']:
-                self._log('No new data for {0}, skipping profile update'.format(ticker))
+                logging.info('No new data for {0}, skipping profile update'.format(ticker))
                 return True
 
             payout = self._calculate_payout_ratio(ticker, latest_data['lastDivAnnual'])
@@ -294,8 +277,8 @@ class DividendData:
                     'lastUpdated': datetime.today()
             }})
         except Exception as e:
-            self._log('Cannot update {0} profile: {1}'.format(ticker, e), exception=True)
+            logging.error('Cannot update {0} profile: {1}'.format(ticker, e))
             return None
         else:
-            self._log('{0} profile updated'.format(ticker))
+            logging.info('{0} profile updated'.format(ticker))
             return True
