@@ -1,0 +1,77 @@
+h1, h2, h3 {
+  color: #660B60;
+}
+
+body {
+  color: #444444;
+}
+
+.indicator {
+  stroke: #ccc;
+  stroke-width: 1;
+  stroke-dasharray: 5;
+  opacity: 1;
+}
+
+.indicator-label {
+  fill: #aaa;
+  font-size: 0.8em;
+}
+
+.axis-label {
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.axis path, line  {
+  stroke: #660B60;
+  stroke-width: 1px;
+}
+
+.tick text, .axis-label {
+  fill: #660B60;
+}
+
+.tick text {
+  font-size: 10px;
+  font-weight: normal;
+}
+
+.ticker {
+  fill: #ffffff;
+  font-size: 15px;
+  text-anchor: middle;
+  alignment-baseline: middle;
+  pointer-events: none;
+}
+
+.switch:hover {
+  cursor: pointer;
+}
+
+.champion {
+  background-color: green;
+}
+
+.contender {
+  background-color: orange;
+}
+
+.challenger {
+  background-color: yellow;
+  color: orange;
+}
+
+.chart {
+  background-color: #f8f8f8;
+  border: 1px #dddddd solid;
+  padding: 0px 15px;
+  width: 730px;
+  float: left;
+}
+
+.stock-info {
+  width: 300px;
+  padding: 0px 15px;
+  float: left;
+}

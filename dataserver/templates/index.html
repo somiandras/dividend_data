@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dividends</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <link rel="stylesheet" href='dist/styles.css'>
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-xs-12">
+        <h2>Exploring Dividend Aristocrats</h2>
+        <h5>Python (Flask) + D3.js experiment</h5>
+      </div>
+    </div>
+    <div class="row">
+      <div class="chart">
+        <svg></svg>
+      </div>
+      <div class="stock-info" id="infopanel"></div>
+    </div>
+    <div class="row">
+      <div class="col-xs-3">
+        <h4>Y axis</h4>
+        <ul>
+          <li><a class="switch" field="payout" axis="y">EPS payout</a></li>
+          <li><a class="switch" field="divg3y" axis="y">3 years dividend growth</a></li>
+          <li><a class="switch" field="divYield" axis="y">Dividend yield</a></li>
+          <li><a class="switch" field="relative" axis="y">Difference from historical average</a></li>
+        </ul>        
+      </div>
+      <div class="col-xs-3">
+        <h4>X axis</h4>
+        <ul>
+          <li><a class="switch" field="payout" axis="x">EPS payout</a></li>
+          <li><a class="switch" field="divg3y" axis="x">3 years dividend growth</a></li>
+          <li><a class="switch" field="divYield" axis="x">Dividend yield</a></li>
+        </ul>        
+      </div>
+      <div class="col-xs-3">
+        <h4>Color</h4>
+        <ul>
+          <li><a class="switch" field="" axis="color">None</a></li>
+          <li><a class="switch" field="payout" axis="color">EPS payout</a></li>
+          <li><a class="switch" field="divg3y" axis="color">3 years dividend growth</a></li>
+          <li><a class="switch" field="divYield" axis="color">Dividend yield</a></li>
+        </ul>        
+      </div>
+      <div class="col-xs-3">
+        <h4>Radius</h4>
+        <ul>
+          <li><a class="switch" field="" axis="r">None</a></li>
+          <li><a class="switch" field="payout" axis="r">EPS payout</a></li>
+          <li><a class="switch" field="divg3y" axis="r">3 years dividend growth</a></li>
+          <li><a class="switch" field="divYield" axis="r">Dividend yield</a></li>
+        </ul>        
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-xs-12">
+        <h3>Filter companies</h3>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-xs-12">
+        <form id="filterForm" class="form-horizontal">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id='outlier-filter'> Eliminate outliers
+            </label>
+          </div>
+          <div class="form-group">
+            <h4>Categories to include</h4>
+            <label>
+              <input type="checkbox" class="category-filter"> Champion
+            </label>
+            <label>
+              <input type="checkbox" class="category-filter"> Contender
+            </label>
+            <label>
+              <input type="checkbox" class="category-filter"> Challenger
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="divYield.min" class="col-xs-2 control-label">Minimum dividend yield</label>
+            <div class="input-group col-xs-2">
+              <span class="input-group-addon">%</span>
+              <input type="number" class="form-control" id="divYield.min">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="payout.max" class="col-xs-2 control-label">Maximum payout ratio</label>
+            <div class="input-group col-xs-2">
+              <span class="input-group-addon">%</span>
+              <input type="number" class="form-control" id="payout.max">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="yieldGrowthSum.min" class="col-xs-2 control-label">Min. of yield + growth</label>
+            <div class="input-group col-xs-2">
+              <span class="input-group-addon">%</span>
+              <input type="number" class="form-control" id="yieldGrowthSum.min">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="relative.min" class="col-xs-2 control-label">Min. relative yield</label>
+            <div class="input-group col-xs-2">
+              <span class="input-group-addon">%</span>
+              <input type="number" class="form-control" id="relative.min">
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script type='text/javascript' src='dist/bundle.js'></script>
+</body>
+</html>

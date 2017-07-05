@@ -1,0 +1,24 @@
+<div class="label {{data.category}}">{{data.category}}</div>
+<h3>{{data.name}} ({{data.ticker}})<br>
+<small>{{data.industry}}</small></h3>
+<br>
+<strong>Dividend yield: </strong>{{data.divYield|round(2)}}% <br>
+
+{% if data.payout %}
+  <strong>EPS payout: </strong>{{data.payout|round(1)}}%
+{% endif %}
+
+<hr>
+<h4>Dividend growth</h4>
+<strong>1 year: </strong>{{data.divg1y|round(1)}}% <br>
+<strong>3 years: </strong>{{data.divg3y|round(1)}}% <br>
+
+{% if data.divg5y %}
+  <strong>5 years: </strong>{{data.divg5y|round(1)}}% <br>
+{% endif %}
+
+{% if data.divg10y %}
+<strong>10 years: </strong>{{data.divg10y|round(1)}}% <br>
+{% endif %}
+
+<a class="btn btn-primary" href="/details/{{data.ticker}}">Details</a>
