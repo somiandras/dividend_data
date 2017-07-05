@@ -77,8 +77,8 @@ class DividendData:
             self._log('DRIP list is processed')
             return company_list
 
-    def download_company_history(self, ticker, interval=20):
-        '''Get price and dividend history of a company from Yahoo'''
+    def _download_company_history(self, ticker, interval=20):
+        '''Get price and dividend history of a company from Yahoo and format/process it'''
         self._log('Getting {1} year history for {0}'.format(ticker, interval))
         try:
             data = self.downloader.get_history(ticker=ticker, years=interval)
@@ -165,55 +165,61 @@ class DividendData:
             self._log('Company list update finished')
         return self.get_tickers()
 
-    def update_company_history(self, ticker, data):
+    def update_company_history(self, ticker):
         '''Save new entries in price and dividend history'''
         self._log('Updating history for {0}'.format(ticker))
-        price_data = [item for item in data if item['type'] == 'price']
-        dividend_data = [item for item in data if item['type'] == 'dividend']
+        try:
+            # Get the last existing date from database
+            agg = self.db.history.aggregate([
+                {'$match': {'ticker': ticker}},
+                {'$project': {'_id': 0, 'price': 1}},
+                {'$unwind': '$price'},
+                {'$sort': {'price.date': -1}},
+                {'$limit': 1},
+                {'$project': {'price.date': 1}}
+            ])
+            max_date = list(agg)[0]['price']['date']
+            delta = datetime.today() - max_date
+            interval = min([math.ceil(delta.days / 365) + 1, 20])
+        except IndexError:
+            # Company is not in database or no price data yet
+            max_date = datetime(1900, 1, 1)
+            interval = 20
 
-        # Insert document and placeholder fields if company is not in collection
-        result = self.db.history.update_one(
-            {'ticker': ticker},
-            {'$setOnInsert': {
-                'ticker': ticker,
-                'price': price_data,
-                'dividend': dividend_data,
-                'lastUpdated': datetime.today()}
-            },
-            upsert=True)
+        data = self._download_company_history(ticker, interval)
 
-        if result.upserted_id:
-            self._log('Inserted {0} to history collection with {1} new data'.format(ticker, len(data)))
+        price_data = [item for item in data if item['type'] == 'price' and item['date'] > max_date]
+        dividend_data = [item for item in data if item['type'] == 'dividend' and item['date'] > max_date]
+
+        if len(price_data) == 0 and len(dividend_data) == 0:
+            self._log('No new data for {0}, no updates added to database'.format(ticker))
             return True
         else:
-            # Get the existing entry and max dates if no insert happened
-            entry = self.db.history.find_one({'ticker': ticker}, projection={'_id': 0})
-            price_max_date = np.max([item['date'] for item in entry['price']])
-            div_max_date = np.max([item['date'] for item in entry['dividend']])
+            self._log('{0} price data, {1} dividend data for {2}'.format(len(price_data), len(dividend_data), ticker))
 
-            price_to_upload = [item for item in price_data if item['date'] > price_max_date]
-            dividend_to_upload = [item for item in dividend_data if item['date'] > div_max_date]
+        # Insert document and placeholder fields if company is not in collection
+        try:
+            self.db.history.update_one(
+                {'ticker': ticker},
+                {'$setOnInsert': {
+                    'ticker': ticker,
+                    'price': [],
+                    'dividend': [],
+                    },
+                '$push': {
+                    'price': {'$each': price_data},
+                    'dividend': {'$each': dividend_data}
+                    },
+                '$set': {'lastUpdated': datetime.today()}
+                },
+                upsert=True)
+        except Exception as e:
+            self._log('Cannot update {0} in history collection: {1}'.format(ticker, e), exception=True)
+            return False
+        else:
+            self._log('{0} history updated with {1} values'.format(ticker, len(price_to_upload) + len(dividend_to_upload)))
+            return True
 
-            if len(price_to_upload) == 0 and len(dividend_to_upload) == 0:
-                self._log('No new data for {0}, no updates added to database'.format(ticker))
-                return True
-            else:
-                self._log('{0} price data, {1} dividend data for {2}'.format(len(price_to_upload), len(dividend_to_upload), ticker))
-                try:
-                    self.db.history.update_one(
-                        {'ticker': ticker},
-                        {'$push': {
-                            'price': {'$each': price_to_upload},
-                            'dividend': {'$each': dividend_to_upload}
-                        },
-                        '$set': {'lastUpdated': datetime.today()}
-                    })
-                except Exception as e:
-                    self._log('Cannot update {0} in history collection: {1}'.format(ticker, e), exception=True)
-                    return False
-                else:
-                    self._log('{0} history updated with {1} values'.format(ticker, len(price_to_upload) + len(dividend_to_upload)))
-                    return True
 
     def _get_latest_data(self, ticker, type='price'):
         '''Get the last entry in history of a given ticker'''
@@ -272,15 +278,22 @@ class DividendData:
         '''Set additional fields and data on existing aristocrat'''
         self._log('Updating {0} profile'.format(ticker))
         try:
+            data_used = self.db.companies.find_one({'ticker': ticker}, projection={'_id': 0, 'lastDataUsed': 1})
             latest_data = self._get_latest_data(ticker)
+
+            if 'lastDataUsed' in data_used and data_used['lastDataUsed'] == latest_data['date']:
+                self._log('No new data for {0}, skipping profile update'.format(ticker))
+                return True
+
             payout = self._calculate_payout_ratio(ticker, latest_data['lastDivAnnual'])
             yield_dist = self.get_yield_distribution(ticker)
             self.db.companies.update_one({'ticker': ticker}, {'$set': {
                     'annualDividend': latest_data['lastDivAnnual'],
                     'payout': payout,
                     'yieldDist': yield_dist,
-                    'lastUpdated': datetime.today(),
-                    'divYield': latest_data['divYield']
+                    'lastDataUsed': latest_data['date'],
+                    'divYield': latest_data['divYield'],
+                    'lastUpdated': datetime.today()
             }})
         except Exception as e:
             self._log('Cannot update {0} profile: {1}'.format(ticker, e), exception=True)

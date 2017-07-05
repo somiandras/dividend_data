@@ -8,6 +8,5 @@ if __name__ == '__main__':
     data = DividendData()
     tickers = data.update_basic_company_data()
     for ticker in tickers:
-        history = data.download_company_history(ticker)
-        data.update_company_history(ticker, history)
+        data.update_company_history(ticker)
         data.update_company_profile(ticker)

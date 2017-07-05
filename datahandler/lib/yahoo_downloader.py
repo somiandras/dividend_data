@@ -7,7 +7,6 @@ import re
 from datetime import datetime
 import pandas as pd
 import io
-import math
 
 class Downloader:
     def __init__(self):
@@ -100,7 +99,7 @@ class Downloader:
 
         self.ticker = ticker
 
-        self.years = math.max(years, 1)
+        self.years = max([years, 1])
         frames = list(self._get_all_data_types())
         full_data = pd.concat(frames, axis=1)
         full_data['Dividends'].fillna(0, inplace=True)
