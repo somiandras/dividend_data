@@ -7,6 +7,7 @@ from datetime import datetime
 import pandas as pd
 from lib.yahoo_downloader import Downloader
 import os
+import math
 
 
 class DividendData:
@@ -202,14 +203,12 @@ class DividendData:
             self.db.history.update_one(
                 {'ticker': ticker},
                 {'$setOnInsert': {
-                    'ticker': ticker,
-                    'price': [],
-                    'dividend': [],
-                    },
+                    'ticker': ticker
+                },
                 '$push': {
                     'price': {'$each': price_data},
                     'dividend': {'$each': dividend_data}
-                    },
+                },
                 '$set': {'lastUpdated': datetime.today()}
                 },
                 upsert=True)
@@ -217,7 +216,7 @@ class DividendData:
             self._log('Cannot update {0} in history collection: {1}'.format(ticker, e), exception=True)
             return False
         else:
-            self._log('{0} history updated with {1} values'.format(ticker, len(price_to_upload) + len(dividend_to_upload)))
+            self._log('{0} history updated with {1} values'.format(ticker, len(price_data) + len(dividend_data)))
             return True
 
 
