@@ -192,21 +192,22 @@ class DividendData:
             div_max_date = np.max([item['date'] for item in entry['dividend']])
 
             price_to_upload = [item for item in price_data if item['date'] > price_max_date]
-            dividend_to_upload = [item for item in price_data if item['date'] > div_max_date]
+            dividend_to_upload = [item for item in dividend_data if item['date'] > div_max_date]
 
             if len(price_to_upload) == 0 and len(dividend_to_upload) == 0:
                 self._log('No new data for {0}, no updates added to database'.format(ticker))
                 return True
             else:
+                self._log('{0} price data, {1} dividend data for {2}'.format(len(price_to_upload), len(dividend_to_upload), ticker))
                 try:
                     self.db.history.update_one(
                         {'ticker': ticker},
                         {'$push': {
                             'price': {'$each': price_to_upload},
                             'dividend': {'$each': dividend_to_upload}
-                            },
+                        },
                         '$set': {'lastUpdated': datetime.today()}
-                        })
+                    })
                 except Exception as e:
                     self._log('Cannot update {0} in history collection: {1}'.format(ticker, e), exception=True)
                     return False
