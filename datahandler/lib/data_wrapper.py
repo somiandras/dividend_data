@@ -243,8 +243,8 @@ class DividendData:
         self._log('Payout calculated for {0}'.format(ticker))
         return payout
 
-    def get_yield_distribution(self, ticker, period=10):
-        '''Calculate min, max, stdev, mean div yield for the given period'''
+    def get_yield_distribution(self, ticker, interval=10):
+        '''Calculate min, max, stdev, mean div yield for the given interval'''
         try:
             history = self.db.history.find_one({'ticker': ticker}, projection={'_id': 0, 'price': 1})['price']
         except Exception as e:
@@ -253,11 +253,11 @@ class DividendData:
         else:
             if len(history) > 0:
                 max_date = np.max([item['date'] for item in history])
-                start_date = max_date.replace(year=max_date.year - period)
+                start_date = max_date.replace(year=max_date.year - interval)
                 filtered = [item['divYield'] for item in history if item['date'] > start_date and item['divYield']]
 
                 yield_dist = {
-                    'period': period,
+                    'interval': interval,
                     'max': np.max(filtered),
                     'min': np.min(filtered),
                     'mean': np.mean(filtered),
