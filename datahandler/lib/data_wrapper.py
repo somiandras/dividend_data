@@ -8,17 +8,22 @@ import pandas as pd
 from lib.yahoo_downloader import Downloader
 import math
 import logging
+import sys
 
 
 class DividendData:
     '''Class for saving, retrieving and updating company data in aristocrats database'''
     def __init__(self):
-        logging.basicConfig(filename='datahandler.log', filemode='w', level=logging.ERROR, format='%(asctime)s\t%(levelname)s\t%(message)s')
+        logging.basicConfig(filename='datahandler.log', filemode='w', level=logging.INFO, format='%(asctime)s;%(levelname)s;%(message)s')
         logging.debug('Setting up data wrapper')
         self.db = MongoClient().dividend_investing
         self.downloader = Downloader()
         self.DRIP_URL = 'http://www.dripinvesting.org/tools/U.S.DividendChampions.xls'
-        self.companies = self._get_companies()
+        try:
+            self.companies = self._get_companies()
+        except Exception as e:
+            logging.critical(e)
+            sys.exit(1)
         logging.info('Ready to crunch data!')
 
     def _define_category(self, years):
@@ -200,7 +205,6 @@ class DividendData:
         else:
             logging.info('{0} history updated with {1} values'.format(ticker, len(price_data) + len(dividend_data)))
             return True
-
 
     def _get_latest_data(self, ticker, type='price'):
         '''Get the last entry in history of a given ticker'''
