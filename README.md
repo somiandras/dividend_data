@@ -1,0 +1,1 @@
+This is a little private project to explore data from the Dividend Aristocrats database from DRIP Investing ([http://www.dripinvesting.org/tools/tools.asp](http://www.dripinvesting.org/tools/tools.asp)) and take price and dividend history from Yahoo Finance API, using [python-yahoo-finance-download](https://github.com/somiandras/python-yahoo-finance-download).
