@@ -61,7 +61,6 @@ class DividendData:
             df['downloaded'] = datetime.today()
             df.replace('n/a', value=np.nan, inplace=True)
             df['category'] = df['divRaiseYrs'].apply(self._define_category)
-            df.drop(['divRaiseYrs'], axis=1, inplace=True)
             company_list = df.where(pd.notnull(df), None).to_dict(orient='records')
             logging.debug('DRIP list is processed')
             return company_list
